@@ -1,0 +1,101 @@
+import numpy as np
+from scipy.signal import butter, filtfilt
+import matplotlib.pyplot as plt
+
+# --- 1. Definir Parámetros de la Señal ---
+fs = 1000  # Frecuencia de muestreo (Hz)
+T = 1      # Duración (segundos)
+# Vector de tiempo: de 0 a 1 segundo, con 'fs' puntos
+t = np.linspace(0., T, fs, endpoint=False)
+
+# Frecuencias de las componentes
+f1 = 20    # Frecuencia baja
+f2 = 150   # Frecuencia media
+f3 = 400   # Frecuencia alta
+
+# --- 2. Crear la Señal de Prueba ---
+# Creamos las tres ondas
+sig_1_baja = np.sin(2 * np.pi * f1 * t)
+sig_2_media = 0.7 * np.sin(2 * np.pi * f2 * t)
+sig_3_alta = 0.5 * np.sin(2 * np.pi * f3 * t)
+
+# La señal original es la suma de las tres
+signal_original = sig_1_baja + sig_2_media + sig_3_alta
+
+# --- 3. Diseñar el Filtro Pasa Bajos (Low-pass) ---
+order = 5            # Orden del filtro (más alto, corte más abrupto)
+cutoff = 50          # Frecuencia de corte (Hz)
+nyquist = 0.5 * fs   # Frecuencia de Nyquist (la mitad de fs)
+
+# Normalizamos la frecuencia de corte
+normal_cutoff = cutoff / nyquist
+
+# Obtenemos los coeficientes (numerador 'b' y denominador 'a') del filtro
+b, a = butter(order, normal_cutoff, btype='low', analog=False)
+
+# --- 4. Aplicar el Filtro ---
+# Usamos 'filtfilt' para una aplicación de fase cero (evita desfasar la señal)
+signal_filtrada = filtfilt(b, a, signal_original)
+
+# --- 5. Evaluación: Graficar Antes y Después ---
+
+# --- A. Dominio del Tiempo ---
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1) # Gráfica de arriba
+plt.plot(t, signal_original)
+plt.title('Señal Original (Dominio del Tiempo)')
+plt.xlabel('Tiempo [s]')
+plt.ylabel('Amplitud')
+plt.grid(True)
+# Limitar el eje x para ver mejor las ondas (opcional)
+plt.xlim(0, 0.2) 
+
+plt.subplot(2, 1, 2) # Gráfica de abajo
+plt.plot(t, signal_filtrada)
+plt.title(f'Señal Filtrada (Pasa Bajos @ {cutoff} Hz)')
+plt.xlabel('Tiempo [s]')
+plt.ylabel('Amplitud')
+plt.grid(True)
+plt.xlim(0, 0.2)
+
+plt.tight_layout() # Ajusta los subplots para que no se solapen
+plt.show()
+
+
+# --- B. Dominio de la Frecuencia (FFT) ---
+
+# Función de ayuda para calcular la FFT y las frecuencias
+def get_fft(y, fs):
+    N = len(y) # Número de muestras
+    fft_vals = np.fft.fft(y)
+    fft_freq = np.fft.fftfreq(N, 1/fs)
+    # Devolvemos solo la mitad positiva del espectro (y su magnitud)
+    return fft_freq[:N//2], np.abs(fft_vals[:N//2])
+
+# Calculamos la FFT para ambas señales
+orig_freq, orig_mag = get_fft(signal_original, fs)
+filt_freq, filt_mag = get_fft(signal_filtrada, fs)
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1)
+plt.plot(orig_freq, orig_mag)
+plt.title('Espectro de Frecuencia (Señal Original)')
+plt.xlabel('Frecuencia (Hz)')
+plt.ylabel('Magnitud')
+plt.grid(True)
+# Marcamos nuestras frecuencias originales
+plt.vlines([f1, f2, f3], ymin=0, ymax=np.max(orig_mag), colors='r', linestyles='dashed')
+
+plt.subplot(2, 1, 2)
+plt.plot(filt_freq, filt_mag)
+plt.title(f'Espectro de Frecuencia (Señal Filtrada - Pasa Bajos)')
+plt.xlabel('Frecuencia (Hz)')
+plt.ylabel('Magnitud')
+plt.grid(True)
+plt.vlines([f1, f2, f3], ymin=0, ymax=np.max(orig_mag), colors='r', linestyles='dashed')
+
+
+plt.tight_layout()
+plt.show()
