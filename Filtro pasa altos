@@ -1,0 +1,96 @@
+import numpy as np
+from scipy.signal import butter, filtfilt
+import matplotlib.pyplot as plt
+
+# --- 1. Definir Parámetros de la Señal (Idéntico) ---
+fs = 1000  # Frecuencia de muestreo (Hz)
+T = 1      # Duración (segundos)
+t = np.linspace(0., T, fs, endpoint=False)
+
+# Frecuencias de las componentes
+f1 = 20    # Frecuencia baja
+f2 = 150   # Frecuencia media
+f3 = 400   # Frecuencia alta
+
+# --- 2. Crear la Señal de Prueba (Idéntico) ---
+sig_1_baja = np.sin(2 * np.pi * f1 * t)
+sig_2_media = 0.7 * np.sin(2 * np.pi * f2 * t)
+sig_3_alta = 0.5 * np.sin(2 * np.pi * f3 * t)
+
+signal_original = sig_1_baja + sig_2_media + sig_3_alta
+
+# --- 3. Diseñar el Filtro Pasa Altos (High-pass) ---
+order = 5
+cutoff = 250         # <--- CAMBIO: Nueva frecuencia de corte (ej. 250 Hz)
+nyquist = 0.5 * fs 
+
+normal_cutoff = cutoff / nyquist
+
+# Obtenemos los coeficientes del filtro
+# <--- CAMBIO: btype ahora es 'high'
+b, a = butter(order, normal_cutoff, btype='high', analog=False) 
+
+# --- 4. Aplicar el Filtro (Idéntico) ---
+signal_filtrada = filtfilt(b, a, signal_original)
+
+# --- 5. Evaluación: Graficar Antes y Después ---
+
+# --- A. Dominio del Tiempo ---
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1) 
+plt.plot(t, signal_original)
+plt.title('Señal Original (Dominio del Tiempo)')
+plt.xlabel('Tiempo [s]')
+plt.ylabel('Amplitud')
+plt.grid(True)
+plt.xlim(0, 0.2) 
+
+plt.subplot(2, 1, 2) 
+plt.plot(t, signal_filtrada)
+# <--- CAMBIO: Título actualizado
+plt.title(f'Señal Filtrada (Pasa Altos @ {cutoff} Hz)') 
+plt.xlabel('Tiempo [s]')
+plt.ylabel('Amplitud')
+plt.grid(True)
+plt.xlim(0, 0.2)
+
+plt.tight_layout()
+plt.show()
+
+
+# --- B. Dominio de la Frecuencia (FFT) ---
+# (La función 'get_fft' es la misma, la omito por brevedad)
+
+def get_fft(y, fs):
+    N = len(y) # Número de muestras
+    fft_vals = np.fft.fft(y)
+    fft_freq = np.fft.fftfreq(N, 1/fs)
+    # Devolvemos solo la mitad positiva del espectro (y su magnitud)
+    return fft_freq[:N//2], np.abs(fft_vals[:N//2])
+
+orig_freq, orig_mag = get_fft(signal_original, fs)
+filt_freq, filt_mag = get_fft(signal_filtrada, fs)
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1)
+plt.plot(orig_freq, orig_mag)
+plt.title('Espectro de Frecuencia (Señal Original)')
+plt.xlabel('Frecuencia (Hz)')
+plt.ylabel('Magnitud')
+plt.grid(True)
+plt.vlines([f1, f2, f3], ymin=0, ymax=np.max(orig_mag), colors='r', linestyles='dashed')
+
+plt.subplot(2, 1, 2)
+plt.plot(filt_freq, filt_mag)
+# <--- CAMBIO: Título actualizado
+plt.title(f'Espectro de Frecuencia (Señal Filtrada - Pasa Altos)') 
+plt.xlabel('Frecuencia (Hz)')
+plt.ylabel('Magnitud')
+plt.grid(True)
+plt.vlines([f1, f2, f3], ymin=0, ymax=np.max(orig_mag), colors='r', linestyles='dashed')
+
+
+plt.tight_layout()
+plt.show()
